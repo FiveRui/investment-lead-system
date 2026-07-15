@@ -1,0 +1,6 @@
+{
+  "deepseek_api_key": "请填写你的DeepSeek API Key（不要提交/不要外传）",
+  "deepseek_api_base_url": "https://api.deepseek.com",
+  "deepseek_model": "deepseek-chat",
+  "deepseek_timeout_seconds": 120
+}

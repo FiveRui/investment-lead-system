@@ -1,0 +1,42 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.venv_build/
+venv/
+env/
+
+# IDE files
+.idea/
+.vscode/
+
+# Local config / secrets
+run_config.json
+db_config.json
+.env
+.env.*
+
+# Runtime data
+uploads/
+logs/
+tmp/
+temp/
+*.log
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Keep template / docs
+!run_config.example.json
+!操作文档.md
+

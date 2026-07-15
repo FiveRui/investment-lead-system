@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全自动招商情报系统</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-50 text-gray-800 font-sans min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col">
+        <!-- 导航栏 -->
+        <header class="bg-indigo-700 text-white shadow-md">
+            <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-chart-line text-2xl"></i>
+                    <h1 class="text-xl font-bold tracking-wider">招商情报专家系统</h1>
+                </div>
+                <div class="flex items-center space-x-4 text-sm">
+                    <span class="flex items-center"><i class="fa-solid fa-server mr-2"></i>多节点集群状态: <span class="ml-2 px-2 py-1 bg-green-500 rounded text-xs">在线</span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="container mx-auto px-6 py-8 flex-grow grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- 数据源上传 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fa-solid fa-file-excel text-green-600 mr-2"></i>产业链数据源</h2>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">上传产业链层级表 (Excel)</label>
+                        <div class="flex items-center justify-center w-full">
+                            <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-indigo-300 border-dashed rounded-lg cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition">
+                                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-500 mb-2"></i>
+                                    <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">点击上传</span> 或拖拽文件</p>
+                                    <p class="text-xs text-gray-400" v-if="!fileName">支持 .xlsx 文件，工作表名作为产业链</p>
+                                    <p class="text-sm text-indigo-700 font-bold" v-else v-text="fileName"></p>
+                                </div>
+                                <input type="file" class="hidden" @change="handleFileUpload" accept=".xlsx, .xls" />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-4" v-if="chains.length > 0">
+                        <p class="text-sm font-medium text-gray-700 mb-2">解析到的产业链:</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-for="chain in chains" :key="chain" class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full" v-text="chain"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 爬取与落商配置 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fa-solid fa-sliders text-indigo-600 mr-2"></i>落商地与节点配置</h2>
+                    
+                    <form @submit.prevent="saveConfig" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">落商地名称</label>
+                                <input type="text" v-model="config.location_name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="如：成武">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">落商地 ID</label>
+                                <input type="text" v-model="config.location_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="如：152">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">爬虫节点配置 (逗号分隔)</label>
+                            <input type="text" v-model="config.nodes" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="节点1, 节点2, 节点3">
+                        </div>
+
+                        <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out flex justify-center items-center">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> 保存配置
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 任务控制 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fa-solid fa-power-off text-red-500 mr-2"></i>引擎控制</h2>
+                    
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm font-semibold text-gray-700 flex items-center">
+                                <i class="fa-solid fa-newspaper text-blue-600 mr-2"></i>原始新闻采集
+                            </div>
+                            <div class="text-xs px-2 py-1 rounded-full border"
+                                 :class="rawNews.state.phase === 'running' ? 'bg-blue-50 text-blue-700 border-blue-200' : (rawNews.state.phase === 'waiting_login' ? 'bg-amber-50 text-amber-700 border-amber-200' : (rawNews.state.phase === 'done' ? 'bg-green-50 text-green-700 border-green-200' : (rawNews.state.phase === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200')))">
+                                <span v-text="rawNewsLabel"></span>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3">
+                            <button @click="startRawNews" :disabled="rawNews.state.is_running" :class="{'opacity-50 cursor-not-allowed': rawNews.state.is_running}" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-md transition flex justify-center items-center">
+                                <i class="fa-solid fa-cloud-arrow-down mr-2"></i>爬取原始新闻
+                            </button>
+                            <button v-if="rawNews.state.phase === 'waiting_login' && rawNews.state.is_running" @click="continueRawNews" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-3 rounded-md transition flex justify-center items-center">
+                                <i class="fa-solid fa-right-to-bracket mr-2"></i>登录完成继续
+                            </button>
+                            <button @click="stopRawNews" :disabled="!rawNews.state.is_running" :class="{'opacity-50 cursor-not-allowed': !rawNews.state.is_running}" class="flex-1 bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 px-3 rounded-md transition flex justify-center items-center">
+                                <i class="fa-solid fa-ban mr-2"></i>停止采集
+                            </button>
+                        </div>
+
+                        <div class="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-28 overflow-y-auto text-xs text-slate-700 font-mono space-y-1">
+                            <div v-for="(log, index) in rawNews.logs" :key="index" v-text="log"></div>
+                            <div v-if="rawNews.logs.length === 0" class="text-slate-400 italic">等待采集启动...</div>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4">
+                        <button @click="startTask" :disabled="isRunning" :class="{'opacity-50 cursor-not-allowed': isRunning}" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-md transition flex justify-center items-center">
+                            <i class="fa-solid fa-play mr-2" v-if="!isRunning"></i>
+                            <i class="fa-solid fa-spinner fa-spin mr-2" v-else></i>
+                            <span v-if="isRunning">正在挖掘...</span>
+                            <span v-else>启动智能挖掘</span>
+                        </button>
+                        <button @click="stopTask" :disabled="!isRunning" :class="{'opacity-50 cursor-not-allowed': !isRunning}" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-4 rounded-md transition flex justify-center items-center">
+                            <i class="fa-solid fa-stop mr-2"></i> 停止任务
+                        </button>
+                    </div>
+
+                    <div class="mt-6 grid grid-cols-2 gap-4 text-center">
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <div class="text-xs text-gray-500 mb-1">分析资讯量</div>
+                            <div class="text-2xl font-bold text-indigo-600" v-text="stats.total_crawled"></div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <div class="text-xs text-gray-500 mb-1">精准招商线索</div>
+                            <div class="text-2xl font-bold text-green-600" v-text="stats.valid_leads"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧监控与结果区 -->
+            <div class="lg:col-span-2 space-y-6 flex flex-col h-full">
+                
+                <!-- 实时日志终端 -->
+                <div class="bg-gray-900 rounded-xl shadow-sm border border-gray-800 flex flex-col h-64">
+                    <div class="px-4 py-2 border-b border-gray-700 flex justify-between items-center bg-gray-800 rounded-t-xl">
+                        <h2 class="text-sm font-semibold text-gray-300"><i class="fa-solid fa-terminal mr-2"></i>多节点实时运行日志</h2>
+                        <span class="flex h-3 w-3 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" v-if="isRunning"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3" :class="isRunning ? 'bg-green-500' : 'bg-gray-500'"></span>
+                        </span>
+                    </div>
+                    <div class="p-4 flex-grow overflow-y-auto font-mono text-xs text-green-400 space-y-1" id="log-container">
+                        <div v-for="(log, index) in logs" :key="index" v-text="log"></div>
+                        <div v-if="logs.length === 0" class="text-gray-500 italic">等待系统启动...</div>
+                    </div>
+                </div>
+
+                <!-- 线索结果展示 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex-grow flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h2 class="text-lg font-semibold text-gray-700"><i class="fa-solid fa-gem text-yellow-500 mr-2"></i>穿透挖掘成果 (精准线索)</h2>
+                        <div class="flex items-center space-x-3">
+                            <button @click="exportLeads('csv')" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i>导出CSV</button>
+                            <button @click="exportLeads('xlsx')" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium"><i class="fa-solid fa-file-excel mr-1"></i>导出Excel</button>
+                            <button @click="fetchLeads" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium"><i class="fa-solid fa-rotate-right mr-1"></i>刷新</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-grow overflow-y-auto pr-2" style="max-height: 500px;">
+                        <div v-if="leads.length === 0" class="flex flex-col items-center justify-center h-48 text-gray-400">
+                            <i class="fa-solid fa-box-open text-4xl mb-3"></i>
+                            <p>暂无线索数据，请启动挖掘任务</p>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div v-for="(lead, index) in leads" :key="index" class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition relative overflow-hidden">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-lg font-bold text-gray-800" v-text="lead.company_name"></h3>
+                                    <span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded" v-text="lead.chain_name"></span>
+                                </div>
+                                
+                                <p class="text-sm text-gray-600 mb-3" v-text="lead.company_intro"></p>
+                                
+                                <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-sm mb-3 bg-slate-50 p-3 rounded">
+                                    <div><span class="text-gray-500">线索名称:</span> <span class="font-medium text-gray-800" v-text="lead.clue_name"></span></div>
+                                    <div><span class="text-gray-500">投资金额:</span> <span class="font-medium text-red-600" v-text="lead.investment_amount"></span></div>
+                                    <div><span class="text-gray-500">用地需求:</span> <span class="font-medium text-gray-800" v-text="lead.land_requirement"></span></div>
+                                    <div><span class="text-gray-500">注册地:</span> <span class="font-medium text-gray-800" v-text="lead.registration_place"></span></div>
+                                </div>
+                                
+                                <div class="flex justify-between items-center text-xs mt-3 pt-3 border-t border-gray-100">
+                                    <div class="flex items-center text-indigo-600 font-medium">
+                                        <i class="fa-solid fa-location-dot mr-1"></i> <span v-text="lead.region_name"></span>
+                                    </div>
+                                    <div class="flex space-x-3">
+                                        <a :href="lead.public_sentiment_link" target="_blank" class="text-blue-500 hover:underline"><i class="fa-solid fa-link mr-1"></i>舆情来源</a>
+                                        <a v-if="getFirstPlanDocUrl(lead)" :href="getFirstPlanDocUrl(lead)" target="_blank" class="text-red-500 hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i>查看研报</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
